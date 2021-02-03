@@ -1,0 +1,8 @@
+-cp src
+-main Main
+-lib heaps
+-lib hlsdl
+-D windowSize=840x480
+-D windowFixed
+-hl build/hl/game.hl
+-debug
