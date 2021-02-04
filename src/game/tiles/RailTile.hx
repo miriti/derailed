@@ -15,8 +15,7 @@ enum RailTileVariation {
 class RailTile extends GameTile {
 	var image:Bitmap;
 
-	var prev:RailTile = null;
-	var next(default, set):RailTile = null;
+	public var next(default, set):RailTile = null;
 
 	function set_next(value:RailTile) {
 		if (prev != null) {
@@ -51,6 +50,23 @@ class RailTile extends GameTile {
 		return next = value;
 	}
 
+	public var prev(default, set):RailTile;
+
+	function set_prev(value:RailTile) {
+		if (value != null) {
+			if (pos.tileY == value.pos.tileY) {
+				variation = HORIZONTAL;
+			} else {
+				variation = VERTICAL;
+			}
+
+			value.next = this;
+		} else
+			variation = HORIZONTAL;
+
+		return prev = value;
+	}
+
 	public var variation(default, set):RailTileVariation;
 
 	function set_variation(value:RailTileVariation):RailTileVariation {
@@ -77,20 +93,9 @@ class RailTile extends GameTile {
 	public function new(?parent, ?pos:TilePos, ?prev:RailTile) {
 		super(null, pos, parent);
 
-		this.prev = prev;
-
 		image = new Bitmap();
 		addChild(image);
 
-		if (prev != null) {
-			if (pos.tileY == prev.pos.tileY) {
-				variation = HORIZONTAL;
-			} else {
-				variation = VERTICAL;
-			}
-
-			prev.next = this;
-		} else
-			variation = HORIZONTAL;
+		this.prev = prev;
 	}
 }

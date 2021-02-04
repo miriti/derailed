@@ -1,0 +1,13 @@
+- mobs map collisions
+- commodities harvesting
+- rails crafting
+- connect two stations
+- indefinite level generation
+- game over
+- menus
+  - main
+  - pause
+- tutorial
+- upgrades?
+- sounds
+- music

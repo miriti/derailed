@@ -1,5 +1,7 @@
 package game.train;
 
+import game.tiles.RailTile;
+import game.tiles.RailTile.RailTileVariation;
 import game.tiles.GameTile;
 import game.types.TilePos;
 import h2d.Bitmap;
@@ -21,8 +23,8 @@ class Car extends GameObject {
 			}
 		}
 
-		var fromPos = track[trackTile];
-		var toPos:TilePos = trackTile < track.length - 1 ? track[trackTile + 1] : {tileX: fromPos.tileX + 1, tileY: fromPos.tileY};
+		var fromPos = track[trackTile].pos;
+		var toPos:TilePos = trackTile < track.length - 1 ? track[trackTile + 1].pos : {tileX: fromPos.tileX + 1, tileY: fromPos.tileY};
 
 		if (fromPos.tileY == toPos.tileY) {
 			rotation = 0;
@@ -42,7 +44,7 @@ class Car extends GameObject {
 		return tilePos = value;
 	}
 
-	var track:Array<TilePos>;
+	var track:Array<RailTile>;
 
 	var trackTile:Int;
 
@@ -56,7 +58,7 @@ class Car extends GameObject {
 		image.y = -image.getBounds().height / 2;
 	}
 
-	public function setTrack(track:Array<TilePos>, ?start:Int = 0) {
+	public function setTrack(track:Array<RailTile>, ?start:Int = 0) {
 		this.track = track;
 		this.trackTile = start;
 

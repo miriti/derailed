@@ -1,4 +1,5 @@
 -cp src
 -main Main
 -lib heaps
+-D js-source-map
 -js build/js/game.js

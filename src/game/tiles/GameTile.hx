@@ -1,12 +1,13 @@
 package game.tiles;
 
-import h2d.Object;
 import game.types.TilePos;
 import h2d.Bitmap;
+import h2d.Object;
 import h2d.Tile;
 import hxd.Res;
 
 class GameTile extends Object {
+	public var map:TileMap;
 	public var pos:TilePos;
 
 	public static final SIZE:Int = 6;
@@ -26,5 +27,18 @@ class GameTile extends Object {
 
 		if (tile != null)
 			new Bitmap(tile, this);
+	}
+
+	public static function colorFactory(color:Int):GameTile {
+		switch (color) {
+			case 0xff0000ff:
+				return new RailTile();
+			case 0xffffff00:
+				return new Station();
+			case 0xff00ff00:
+				return new TreeTile();
+		}
+
+		return null;
 	}
 }

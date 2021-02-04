@@ -3,7 +3,7 @@ package game;
 import game.mobs.Player;
 import game.tiles.RailTile;
 import game.tiles.TileMap;
-import game.train.Car;
+import game.train.Train;
 import game.types.Dir;
 import game.types.TilePos;
 import hxd.Key;
@@ -60,32 +60,32 @@ class Game extends State {
 		return result;
 	}
 
-	public var track:Array<TilePos> = [];
+	public var track:Array<RailTile>;
 
-	var cars:Array<Car> = [];
-
+	var train:Train;
 	var map:TileMap;
+
+	var gameLayer:GameObject;
+
+	public var hud:HUD;
 
 	public function new() {
 		super();
 
-		map = new TileMap(0, 0, 28, 8, this);
-		player = new Player(this);
+		gameLayer = new GameObject(this);
 
-		for (n in 0...8)
-			addTrack(n, 4);
+		map = TileMap.fromSegment(gameLayer);
 
-		cars.push(new Car(this));
-		cars[0].speed = 0;
-		cars[0].setTrack(track, 1);
+		track = map.getTrack();
 
-		cars.push(new Car(this));
-		cars[1].speed = 0;
-		cars[1].setTrack(track, 3);
+		player = new Player(gameLayer);
+		player.fx = 2 * 6;
+		player.fy = 6 * 5;
 
-		cars.push(new Car(this));
-		cars[2].speed = 0;
-		cars[2].setTrack(track, 5);
+		train = new Train(gameLayer);
+		train.setTrack(track, 3);
+
+		hud = new HUD(this);
 	}
 
 	public function addTrack(atX:Int, atY:Int) {
@@ -95,8 +95,8 @@ class Game extends State {
 			var newRailTile:RailTile = null;
 
 			if (track.length > 0) {
-				var prevPos = track[track.length - 1];
-				var prevTile = map.getTilePos(prevPos);
+				var prev = track[track.length - 1];
+				var prevTile = map.getTilePos(prev.pos);
 
 				if (prevTile.is(RailTile)) {
 					newRailTile = new RailTile(null, pos, cast prevTile);
@@ -106,7 +106,7 @@ class Game extends State {
 
 			if (newRailTile != null) {
 				map.setTilePos(pos, newRailTile);
-				track.push(pos);
+				track.push(newRailTile);
 			}
 		}
 	}
@@ -123,20 +123,20 @@ class Game extends State {
 
 		return [
 			{
-				tileX: last.tileX - 1,
-				tileY: last.tileY
+				tileX: last.pos.tileX - 1,
+				tileY: last.pos.tileY
 			},
 			{
-				tileX: last.tileX + 1,
-				tileY: last.tileY
+				tileX: last.pos.tileX + 1,
+				tileY: last.pos.tileY
 			},
 			{
-				tileX: last.tileX,
-				tileY: last.tileY - 1
+				tileX: last.pos.tileX,
+				tileY: last.pos.tileY - 1
 			},
 			{
-				tileX: last.tileX,
-				tileY: last.tileY + 1
+				tileX: last.pos.tileX,
+				tileY: last.pos.tileY + 1
 			}
 		].filter((p:TilePos) -> {
 			return map.inRange(p) && map.getTilePos(p) == null;
@@ -173,8 +173,7 @@ class Game extends State {
 		if (startTime != null) {
 			if (startTime <= 0) {
 				startTime = null;
-				for (car in cars)
-					car.speed = 0.5;
+				train.speed = hud.speed = 0.25;
 			} else
 				startTime -= dt;
 		}
@@ -182,7 +181,8 @@ class Game extends State {
 		player.moveDirection = getKeyDirection();
 		player.update(dt);
 
-		for (car in cars)
-			car.update(dt);
+		train.update(dt);
+
+		gameLayer.fx = -train.cars[0].x + 30;
 	}
 }
