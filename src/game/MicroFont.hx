@@ -8,13 +8,15 @@ class MicroFont extends TileGroup {
 	public var text(default, set):String = '';
 
 	function set_text(value:String):String {
-		clear();
+		if (value != text) {
+			clear();
 
-		for (cn in 0...value.length) {
-			var char = value.charAt(cn);
+			for (cn in 0...value.length) {
+				var char = value.charAt(cn);
 
-			if (chars.exists(char)) {
-				add(cn * 4, 0, tile.sub(chars[char].cx, chars[char].cy, 3, 5));
+				if (chars.exists(char)) {
+					add(cn * 4, 0, tile.sub(chars[char].cx, chars[char].cy, 3, 5));
+				}
 			}
 		}
 

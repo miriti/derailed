@@ -1,12 +1,22 @@
 package game;
 
+import game.tiles.CommodityTile;
+import game.carrying.Axe;
+import game.carrying.Carry;
+import game.carrying.Pickaxe;
+import game.carrying.Pile;
+import game.carrying.Tool;
 import game.mobs.Player;
+import game.tiles.EmptyTile;
 import game.tiles.RailTile;
 import game.tiles.TileMap;
 import game.train.Train;
 import game.types.Dir;
 import game.types.TilePos;
+import h2d.Bitmap;
+import h2d.Tile;
 import hxd.Key;
+import hxd.Res;
 
 using Std;
 
@@ -63,35 +73,98 @@ class Game extends State {
 	public var track:Array<RailTile>;
 
 	var train:Train;
-	var map:TileMap;
+	var map:GameMap;
 
+	var gameLayerWrap:GameObject;
 	var gameLayer:GameObject;
 
+	var frontLayer:GameObject;
+
 	public var hud:HUD;
+
+	var playerDebug:Bitmap;
+	var playerSelectionDebug:Bitmap;
+
+	var playerSelection:Selection;
 
 	public function new() {
 		super();
 
-		gameLayer = new GameObject(this);
+		gameLayerWrap = new GameObject(this);
+		gameLayerWrap.y = 1;
 
-		map = TileMap.fromSegment(gameLayer);
+		gameLayer = new GameObject(gameLayerWrap);
+		frontLayer = new GameObject();
 
-		track = map.getTrack();
+		map = new GameMap(gameLayer);
+
+		var initialChunk = TileMap.fromSegment(Res.segments.initial.toBitmap());
+
+		map.pushTileMap(initialChunk);
+
+		track = initialChunk.getTrack();
+		playerDebug = new Bitmap(Tile.fromColor(0xff0000, 6, 6, 0.3), gameLayer);
+		playerDebug.visible = false;
+
+		playerSelectionDebug = new Bitmap(Tile.fromColor(0x00ff00, 6, 6, 0.3), gameLayer);
+		playerSelectionDebug.visible = false;
+
+		playerSelection = new Selection(frontLayer);
+		playerSelection.visible = false;
 
 		player = new Player(gameLayer);
-		player.fx = 2 * 6;
-		player.fy = 6 * 5;
+		player.map = map;
+		player.tileX = 1;
+		player.tileY = 5;
+
+		drop(0, 5, new Axe());
+		drop(2, 5, new Pickaxe());
+		drop(1, 6, new Pile(new RailTile(), 1, 1));
 
 		train = new Train(gameLayer);
+		train.onCrush = () -> {
+			shake(4);
+		};
 		train.setTrack(track, 3);
 
+		gameLayer.addChild(frontLayer);
+
 		hud = new HUD(this);
+	}
+
+	public function getNextEmptyTile(tx:Int, ty:Int, backtrack:Map<Int, Map<Int, Bool>> = null):EmptyTile {
+		if (backtrack == null)
+			backtrack = [];
+
+		var tile = map.getTile(tx, ty);
+
+		if (tile.is(EmptyTile) && cast(tile, EmptyTile).toCarry == null)
+			return cast tile;
+
+		for (p in [[-1, 0], [0, -1], [1, 0], [0, 1]]) {
+			var tile = map.getTile(tx + p[0], ty + p[1]);
+
+			if (tile.is(EmptyTile) && cast(tile, EmptyTile).toCarry == null)
+				return cast tile;
+		}
+
+		return null;
+	}
+
+	public function drop(atX:Int, atY:Int, carry:Carry) {
+		var tile = map.getTile(atX, atY);
+
+		if (tile.is(EmptyTile)) {
+			var emptyTile:EmptyTile = cast tile;
+			emptyTile.toCarry = carry;
+		} else
+			trace('not empty tile $atX $atY');
 	}
 
 	public function addTrack(atX:Int, atY:Int) {
 		var pos:TilePos = {tileX: atX, tileY: atY};
 
-		if (map.getTilePos(pos) == null) {
+		if (Std.is(map.getTilePos(pos), EmptyTile)) {
 			var newRailTile:RailTile = null;
 
 			if (track.length > 0) {
@@ -139,7 +212,7 @@ class Game extends State {
 				tileY: last.pos.tileY + 1
 			}
 		].filter((p:TilePos) -> {
-			return map.inRange(p) && map.getTilePos(p) == null;
+			return (map.getTilePos(p) == null || Std.is(map.getTilePos(p), EmptyTile) || map.getTilePos(p).passable);
 		});
 	}
 
@@ -147,17 +220,56 @@ class Game extends State {
 		super.keyDown(keyCode);
 
 		if (keyCode == Key.SPACE) {
-			var pos:TilePos = {
-				tileX: Math.floor((player.fx + 3) / 6),
-				tileY: Math.floor((player.fy + 3) / 6)
-			};
+			var actionTilePos:TilePos = player.actionTilePos;
 
-			var avail = availableForTrack();
+			var tile = map.getTilePos(actionTilePos);
 
-			for (p in avail) {
-				if (p.tileX == pos.tileX && p.tileY == pos.tileY) {
-					addTrack(pos.tileX, pos.tileY);
-					break;
+			if (tile != null && tile.is(EmptyTile)) {
+				var emptyTile:EmptyTile = cast tile;
+
+				if (player.carrying != null && player.carrying.is(Pile)) {
+					var pile:Pile = cast player.carrying;
+
+					if (pile.of.is(RailTile)) {
+						var avail = availableForTrack();
+
+						var added:Bool = false;
+
+						for (p in avail) {
+							if (p.tileX == player.actionTilePos.tileX && p.tileY == player.actionTilePos.tileY) {
+								var toTile:EmptyTile = cast map.getTilePos(p);
+
+								if (toTile.toCarry != null) {
+									var nextEmpty = getNextEmptyTile(p.tileX, p.tileY);
+
+									if (nextEmpty != null)
+										nextEmpty.toCarry = toTile.toCarry;
+								}
+
+								addTrack(player.actionTilePos.tileX, player.actionTilePos.tileY);
+								added = true;
+								break;
+							}
+						}
+
+						if (!added) {
+							emptyTile.toCarry = pile;
+							player.carrying = null;
+						}
+					} else {
+						emptyTile.toCarry = pile;
+						player.carrying = null;
+					}
+				} else if (player.carrying != null && emptyTile.toCarry != null) {
+					if (player.carrying.is(Pile) && emptyTile.toCarry.is(Pile)) {
+						if (cast(player.carrying, Pile).add(emptyTile.toCarry)) {}
+					}
+				} else if (player.carrying != null && emptyTile.toCarry == null) {
+					emptyTile.toCarry = player.carrying;
+					player.carrying = null;
+				} else if (player.carrying == null && emptyTile.toCarry != null) {
+					player.carrying = emptyTile.toCarry;
+					emptyTile.toCarry = null;
 				}
 			}
 		}
@@ -169,11 +281,13 @@ class Game extends State {
 
 	var startTime:Null<Float> = 3;
 
+	var nextChunkDistance:Float = 0;
+
 	override function update(dt:Float) {
 		if (startTime != null) {
 			if (startTime <= 0) {
 				startTime = null;
-				train.speed = hud.speed = 0.25;
+				train.start();
 			} else
 				startTime -= dt;
 		}
@@ -181,8 +295,112 @@ class Game extends State {
 		player.moveDirection = getKeyDirection();
 		player.update(dt);
 
+		if (player.carrying != null) {
+			if (player.carrying.is(Pile)) {
+				var pile:Pile = cast player.carrying;
+
+				if (pile.of.is(RailTile)) {
+					var avail = availableForTrack();
+
+					var hasAvail:Bool = false;
+
+					for (t in avail) {
+						if (t.tileX == player.actionTilePos.tileX && t.tileY == player.actionTilePos.tileY) {
+							hasAvail = true;
+							player.carryingDisplaySnap = t;
+							playerSelection.visible = true;
+							break;
+						}
+					}
+
+					if (!hasAvail) {
+						player.carryingDisplaySnap = null;
+						playerSelection.visible = false;
+					}
+				} else {
+					playerSelection.visible = false;
+				}
+			} else if (player.carrying.is(Tool)) {
+				var tool:Tool = cast player.carrying;
+
+				var tile = map.getTilePos(player.actionTilePos);
+
+				if (tile != null && tile.is(tool.commodityClass)) {
+					playerSelection.visible = true;
+				} else
+					playerSelection.visible = false;
+			} else
+				playerSelection.visible = false;
+		} else if (player.carrying == null) {
+			var actionTile = map.getTilePos(player.actionTilePos);
+
+			if (actionTile != null && actionTile.is(EmptyTile) && cast(actionTile, EmptyTile).toCarry != null) {
+				playerSelection.visible = true;
+			} else {
+				playerSelection.visible = false;
+			}
+		} else {
+			playerSelection.visible = false;
+		}
+
+		playerDebug.x = Math.floor(player.tileX) * 6;
+		playerDebug.y = Math.floor(player.tileY) * 6;
+
+		playerSelection.x = playerSelectionDebug.x = (player.actionTilePos.tileX) * 6 - 1;
+		playerSelection.y = playerSelectionDebug.y = (player.actionTilePos.tileY) * 6 - 1;
+
+		var d = train.distance;
 		train.update(dt);
 
-		gameLayer.fx = -train.cars[0].x + 30;
+		nextChunkDistance += train.distance - d;
+
+		if (nextChunkDistance >= 100) {
+			nextChunk();
+			nextChunkDistance = 0;
+		}
+
+		if (train.cars.length > 0) {
+			hud.distance = train.distance;
+			gameLayer.fx = -train.cars[0].x + 30;
+		} else {
+			// TODO: Game over
+		}
+
+		hud.speed = train.speed;
+
+		if (shaking) {
+			gameLayerWrap.x = Math.floor(Math.sin(shakePhase) * (shakeAmp * (shakeTimeCurrent / shakeTime)));
+			gameLayerWrap.y = Math.floor(Math.cos(shakePhase) * (shakeAmp * (shakeTimeCurrent / shakeTime)));
+
+			if (shakeTimeCurrent == 0)
+				shaking = false;
+			else {
+				shakeTimeCurrent -= dt;
+				shakePhase += Math.PI * 2 * Math.random();
+
+				if (shakeTimeCurrent <= 0)
+					shakeTimeCurrent = 0;
+			}
+		}
+	}
+
+	var shakeTime:Float = 0;
+	var shakeTimeCurrent:Float = 0;
+	var shakeAmp:Float = 3;
+	var shakePhase:Float = 0;
+	var shaking:Bool = false;
+
+	public function shake(amp:Float, time:Float = 1) {
+		shakeAmp = amp;
+		shakeTime = shakeTimeCurrent = time;
+		shaking = true;
+	}
+
+	public function nextChunk() {
+		var startX = map.nextStartX;
+		var startY = map.nextStartY;
+
+		var nextChunk = TileMap.fromSegment(Res.segments.rnd._01.toBitmap(), startX, startY);
+		map.pushTileMap(nextChunk);
 	}
 }

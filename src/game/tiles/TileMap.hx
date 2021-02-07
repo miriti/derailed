@@ -1,7 +1,9 @@
 package game.tiles;
 
 import game.types.TilePos;
+import h2d.Bitmap;
 import h2d.Object;
+import hxd.BitmapData;
 import hxd.Res;
 
 using Std;
@@ -12,12 +14,18 @@ class TileMap extends Object {
 	public var sizeX:Int;
 	public var sizeY:Int;
 
-	var tiles:Array<Array<GameTile>>;
+	var tiles:Map<Int, Map<Int, GameTile>>;
 
-	var trackStart:RailTile = null;
+	public var trackStart:RailTile = null;
 
-	public function inRange(pos:TilePos):Bool {
-		return pos.tileX >= 0 && pos.tileY >= 0 && pos.tileX < sizeX && pos.tileY < sizeY;
+	public var stationPos:TilePos = null;
+
+	public inline function inRangePos(pos:TilePos):Bool {
+		return inRange(pos.tileX, pos.tileY);
+	}
+
+	public inline function inRange(tx:Int, ty:Int):Bool {
+		return tx >= startX && ty >= startY && tx < startX + sizeX && ty < startY + sizeY;
 	}
 
 	public function setTile(tx:Int, ty:Int, tile:GameTile, ?setPos:Bool = true) {
@@ -35,7 +43,21 @@ class TileMap extends Object {
 
 		tiles[ty][tx] = tile;
 
-		if (trackStart == null && tile.is(Station)) {
+		if (trackStart == null && stationPos == null && tile.is(Station)) {
+			stationPos = {tileX: tx, tileY: ty};
+		}
+
+		if (tile != null) {
+			tile.setPosition((tx - startX) * 6, (ty - startY) * 6);
+			addChild(tile);
+		}
+	}
+
+	public function initStation() {
+		if (stationPos != null) {
+			var tx = stationPos.tileX;
+			var ty = stationPos.tileY;
+
 			trackStart = new RailTile();
 			setTile(tx, ty + 2, trackStart);
 
@@ -55,11 +77,6 @@ class TileMap extends Object {
 			next = next.next;
 			setTile(tx + 4, ty + 2, next);
 		}
-
-		if (tile != null) {
-			tile.setPosition(tx * 6, ty * 6);
-			addChild(tile);
-		}
 	}
 
 	public function setTilePos(pos:TilePos, tile:GameTile, ?setPos:Bool = true) {
@@ -67,7 +84,7 @@ class TileMap extends Object {
 	}
 
 	public function getTile(tx:Int, ty:Int):GameTile {
-		return tiles[ty][tx];
+		return inRange(tx, ty) ? tiles[ty][tx] : null;
 	}
 
 	public function getTilePos(pos:TilePos):GameTile {
@@ -82,7 +99,13 @@ class TileMap extends Object {
 		this.sizeX = sizeX;
 		this.sizeY = sizeY;
 
-		tiles = [for (_ in 0...sizeY) [for (_ in 0...sizeX) null]];
+		tiles = [
+			for (row in startY...startY + sizeY)
+				row => [
+					for (col in startX...startX + sizeX)
+						col => null
+				]
+		];
 	}
 
 	public function getTrack():Array<RailTile> {
@@ -98,31 +121,32 @@ class TileMap extends Object {
 		return result;
 	}
 
-	public static function fromSegment(?parent, ?onTile:GameTile->Bool):TileMap {
-		var segment = Res.segments.segment.toBitmap();
-
-		var map = new TileMap(0, 0, segment.width, segment.height, parent);
-
-		trace('segment size: ', segment.width, segment.height);
+	public static function fromSegment(segment:BitmapData, ?startX:Int = 0, ?startY:Int = 0, ?parent, ?onTile:GameTile->Bool):TileMap {
+		var map = new TileMap(startX, startY, segment.width, segment.height, parent);
 
 		segment.lock();
 		for (px in 0...segment.width) {
 			for (py in 0...segment.height) {
 				var tile = GameTile.colorFactory(segment.getPixel(px, py));
 
+				var tx = startX + px;
+				var ty = startY + py;
+
 				if (tile != null) {
-					tile.pos = {tileX: px, tileY: py};
+					tile.pos = {tileX: tx, tileY: ty};
 					if (onTile != null) {
 						if (onTile(tile)) {
-							map.setTile(px, py, tile);
+							map.setTile(tx, ty, tile);
 						}
 					} else {
-						map.setTile(px, py, tile);
+						map.setTile(tx, ty, tile);
 					}
 				}
 			}
 		}
 		segment.unlock();
+
+		map.initStation();
 
 		return map;
 	}

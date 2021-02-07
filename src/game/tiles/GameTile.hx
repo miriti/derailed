@@ -10,6 +10,13 @@ class GameTile extends Object {
 	public var map:TileMap;
 	public var pos:TilePos;
 
+	public var passable:Bool = true;
+
+	public var image(get, never):Bitmap;
+
+	function get_image():Bitmap
+		return null;
+
 	public static final SIZE:Int = 6;
 
 	public static function getBmp(tx:Int, ty:Int):Tile {
@@ -37,8 +44,10 @@ class GameTile extends Object {
 				return new Station();
 			case 0xff00ff00:
 				return new TreeTile();
+			case 0xff000000:
+				return new RockTile();
 		}
 
-		return null;
+		return new EmptyTile();
 	}
 }

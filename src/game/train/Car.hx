@@ -1,8 +1,7 @@
 package game.train;
 
-import game.tiles.RailTile;
-import game.tiles.RailTile.RailTileVariation;
 import game.tiles.GameTile;
+import game.tiles.RailTile;
 import game.types.TilePos;
 import h2d.Bitmap;
 import hxd.Res;
@@ -11,15 +10,18 @@ class Car extends GameObject {
 	public var speed:Float = 0.0;
 	public var tilePos(default, set):Float;
 
+	public var distance:Float = 0;
+
+	public var crushed:Bool = false;
+
 	function set_tilePos(value:Float):Float {
 		while (value > 1) {
 			value -= 1;
 			trackTile++;
 
-			if (trackTile == track.length) {
-				// crush
-
-				return tilePos;
+			if (trackTile == track.length - 1) {
+				crushed = true;
+				return tilePos = value;
 			}
 		}
 
@@ -66,6 +68,8 @@ class Car extends GameObject {
 	}
 
 	override function update(dt:Float) {
+		var curx = x;
 		tilePos += speed * dt;
+		distance += x - curx;
 	}
 }

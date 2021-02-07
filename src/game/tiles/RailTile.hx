@@ -13,7 +13,13 @@ enum RailTileVariation {
 }
 
 class RailTile extends GameTile {
-	var image:Bitmap;
+	var railImage:Bitmap;
+
+	var _defaultImage:Bitmap;
+
+	override function get_image():Bitmap {
+		return _defaultImage;
+	}
 
 	public var next(default, set):RailTile = null;
 
@@ -71,7 +77,7 @@ class RailTile extends GameTile {
 
 	function set_variation(value:RailTileVariation):RailTileVariation {
 		if (value != variation) {
-			image.tile = switch (value) {
+			railImage.tile = switch (value) {
 				case HORIZONTAL:
 					GameTile.getBmp(1, 0);
 				case VERTICAL:
@@ -93,8 +99,10 @@ class RailTile extends GameTile {
 	public function new(?parent, ?pos:TilePos, ?prev:RailTile) {
 		super(null, pos, parent);
 
-		image = new Bitmap();
-		addChild(image);
+		_defaultImage = new Bitmap(GameTile.getBmp(1, 0));
+
+		railImage = new Bitmap();
+		addChild(railImage);
 
 		this.prev = prev;
 	}

@@ -1,13 +1,7 @@
-- mobs map collisions
-- commodities harvesting
+- better collisions
+- title screen
 - rails crafting
-- connect two stations
-- indefinite level generation
-- game over
-- menus
-  - main
-  - pause
+- more random chunks
+- sound
 - tutorial
-- upgrades?
-- sounds
-- music
+- game over screen
