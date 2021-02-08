@@ -1,15 +1,17 @@
 package game.mobs;
 
-import h2d.Object;
-import h2d.Tile;
 import game.carrying.Carry;
 import game.carrying.Tool;
 import game.tiles.CommodityTile;
 import game.tiles.GameTile;
 import game.tiles.RockTile;
+import game.tiles.TreeTile;
 import game.types.Dir;
 import game.types.TilePos;
 import h2d.Bitmap;
+import h2d.Object;
+import h2d.Tile;
+import hxd.Res;
 
 class Player extends Mob {
 	static final HARVEST_TIME:Float = 0.5;
@@ -55,6 +57,7 @@ class Player extends Mob {
 		if (carrying != null) {
 			carryingDisplay.tile = carrying.image.tile;
 			carryingDisplay.visible = true;
+			Res.sound.pickup.play();
 		} else {
 			carryingDisplay.visible = false;
 		}
@@ -190,7 +193,9 @@ class Player extends Mob {
 						commodityTile.hit();
 
 						if (Std.is(commodityTile, RockTile)) {
-							// Res.sound.pickaxe.play();
+							Res.sound.pickaxe.play();
+						} else if (Std.is(commodityTile, TreeTile)) {
+							Res.sound.axe.play();
 						}
 
 						harvestDelay = HARVEST_TIME;

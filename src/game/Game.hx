@@ -254,6 +254,7 @@ class Game extends State {
 								}
 
 								addTrack(player.actionTilePos.tileX, player.actionTilePos.tileY);
+								Res.sound.track.play();
 								added = true;
 								pile.quantity--;
 
@@ -273,6 +274,7 @@ class Game extends State {
 						&& emptyTile.toCarry.is(Pile)
 						&& cast(emptyTile.toCarry, Pile).of.is(CommodityTile) && cast(emptyTile.toCarry, Pile).ofClass != pile.ofClass) {
 						emptyTile.toCarry = new Pile(new RailTile(), 3, 3);
+						Res.sound.crafted.play();
 						player.carrying = null;
 					} else {
 						emptyTile.toCarry = pile;

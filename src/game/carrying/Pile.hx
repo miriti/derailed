@@ -1,7 +1,6 @@
 package game.carrying;
 
 import game.tiles.GameTile;
-import game.tiles.TreeTile;
 
 using Std;
 

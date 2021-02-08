@@ -1,8 +1,7 @@
 package game.carrying;
 
-import h2d.Anim;
-import h2d.Tile;
 import game.tiles.CommodityTile;
+import h2d.Tile;
 
 class Tool extends Carry {
 	public var commodityClass:Class<CommodityTile>;
