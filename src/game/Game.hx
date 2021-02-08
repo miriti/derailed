@@ -1,12 +1,12 @@
 package game;
 
-import game.tiles.CommodityTile;
 import game.carrying.Axe;
 import game.carrying.Carry;
 import game.carrying.Pickaxe;
 import game.carrying.Pile;
 import game.carrying.Tool;
 import game.mobs.Player;
+import game.tiles.CommodityTile;
 import game.tiles.EmptyTile;
 import game.tiles.RailTile;
 import game.tiles.TileMap;
@@ -114,22 +114,29 @@ class Game extends State {
 
 		player = new Player(gameLayer);
 		player.map = map;
-		player.tileX = 1;
-		player.tileY = 5;
+		player.tileX = 6;
+		player.tileY = 6;
 
-		drop(0, 5, new Axe());
-		drop(2, 5, new Pickaxe());
-		drop(1, 6, new Pile(new RailTile(), 1, 1));
+		drop(5, 5, new Axe());
+		drop(6, 5, new Pile(new RailTile(), 3, 3));
+		drop(7, 5, new Pickaxe());
 
 		train = new Train(gameLayer);
 		train.onCrush = () -> {
 			shake(4);
 		};
-		train.setTrack(track, 3);
+		train.setTrack(track, 5);
 
 		gameLayer.addChild(frontLayer);
 
 		hud = new HUD(this);
+
+		var countdown = new Countdown(this);
+		countdown.x = 34;
+		countdown.y = 16;
+		countdown.onAnimEnd = () -> {
+			countdown.remove();
+		};
 	}
 
 	public function getNextEmptyTile(tx:Int, ty:Int, backtrack:Map<Int, Map<Int, Bool>> = null):EmptyTile {
@@ -248,6 +255,12 @@ class Game extends State {
 
 								addTrack(player.actionTilePos.tileX, player.actionTilePos.tileY);
 								added = true;
+								pile.quantity--;
+
+								if (pile.quantity == 0) {
+									player.carrying = null;
+								}
+
 								break;
 							}
 						}
@@ -256,6 +269,11 @@ class Game extends State {
 							emptyTile.toCarry = pile;
 							player.carrying = null;
 						}
+					} else if (pile.of.is(CommodityTile)
+						&& emptyTile.toCarry.is(Pile)
+						&& cast(emptyTile.toCarry, Pile).of.is(CommodityTile) && cast(emptyTile.toCarry, Pile).ofClass != pile.ofClass) {
+						emptyTile.toCarry = new Pile(new RailTile(), 3, 3);
+						player.carrying = null;
 					} else {
 						emptyTile.toCarry = pile;
 						player.carrying = null;
@@ -279,9 +297,11 @@ class Game extends State {
 		super.keyUp(keyCode);
 	}
 
-	var startTime:Null<Float> = 3;
+	var startTime:Null<Float> = 5;
 
 	var nextChunkDistance:Float = 0;
+
+	var gameOverTimer:Float = 2;
 
 	override function update(dt:Float) {
 		if (startTime != null) {
@@ -294,6 +314,8 @@ class Game extends State {
 
 		player.moveDirection = getKeyDirection();
 		player.update(dt);
+
+		var tile = map.getTilePos(player.actionTilePos);
 
 		if (player.carrying != null) {
 			if (player.carrying.is(Pile)) {
@@ -317,13 +339,21 @@ class Game extends State {
 						player.carryingDisplaySnap = null;
 						playerSelection.visible = false;
 					}
+				} else if (pile.of.is(CommodityTile)
+					&& tile.is(EmptyTile)
+					&& cast(tile, EmptyTile).toCarry.is(Pile)
+						&& pile.ofClass != cast(cast(tile, EmptyTile).toCarry, Pile).ofClass
+							&& !cast(cast(tile, EmptyTile).toCarry, Pile).of.is(RailTile)) {
+					player.carryingDisplaySnap = player.actionTilePos;
+					playerSelection.visible = true;
 				} else {
+					player.carryingDisplaySnap = null;
 					playerSelection.visible = false;
 				}
 			} else if (player.carrying.is(Tool)) {
 				var tool:Tool = cast player.carrying;
 
-				var tile = map.getTilePos(player.actionTilePos);
+				player.carryingDisplaySnap = null;
 
 				if (tile != null && tile.is(tool.commodityClass)) {
 					playerSelection.visible = true;
@@ -354,7 +384,7 @@ class Game extends State {
 
 		nextChunkDistance += train.distance - d;
 
-		if (nextChunkDistance >= 100) {
+		if (nextChunkDistance >= 80) {
 			nextChunk();
 			nextChunkDistance = 0;
 		}
@@ -363,7 +393,10 @@ class Game extends State {
 			hud.distance = train.distance;
 			gameLayer.fx = -train.cars[0].x + 30;
 		} else {
-			// TODO: Game over
+			if (gameOverTimer <= 0)
+				Main.instance.setState(new GameOver(train.distance));
+			else
+				gameOverTimer -= dt;
 		}
 
 		hud.speed = train.speed;
@@ -400,7 +433,14 @@ class Game extends State {
 		var startX = map.nextStartX;
 		var startY = map.nextStartY;
 
-		var nextChunk = TileMap.fromSegment(Res.segments.rnd._01.toBitmap(), startX, startY);
+		var rndSegments = [
+			Res.segments.rnd._00,
+			Res.segments.rnd._01,
+			Res.segments.rnd._02,
+			Res.segments.rnd._03
+		];
+
+		var nextChunk = TileMap.fromSegment(rndSegments[Math.floor(Math.random() * rndSegments.length)].toBitmap(), startX, startY);
 		map.pushTileMap(nextChunk);
 	}
 }

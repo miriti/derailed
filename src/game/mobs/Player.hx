@@ -1,5 +1,6 @@
 package game.mobs;
 
+import h2d.Object;
 import h2d.Tile;
 import game.carrying.Carry;
 import game.carrying.Tool;
@@ -15,7 +16,7 @@ class Player extends Mob {
 	static final FRAME_TIME:Float = 0.1;
 	static final MOVE_SPEED:Float = 3.5;
 
-	public var actionDirection:Dir = {dx: 1, dy: 0};
+	public var actionDirection:Dir = {dx: 0, dy: -1};
 	public var moveDirection(default, set):Dir;
 
 	function set_moveDirection(value:Dir) {
@@ -44,6 +45,7 @@ class Player extends Mob {
 	public var carrying(default, set):Carry = null;
 
 	var carryingDisplay:Bitmap;
+	var carryingDisplayWrap:Object;
 
 	public var carryingDisplaySnap:TilePos = null;
 
@@ -75,7 +77,10 @@ class Player extends Mob {
 	public function new(?parent) {
 		super(parent);
 
-		carryingDisplay = new Bitmap(parent);
+		carryingDisplayWrap = new Object(parent);
+
+		carryingDisplay = new Bitmap(carryingDisplayWrap);
+		carryingDisplay.x = -3;
 		carryingDisplay.visible = false;
 
 		animFrames = [
@@ -104,7 +109,38 @@ class Player extends Mob {
 		if (moveDirection.dx != 0 || moveDirection.dy != 0) {
 			idle = false;
 
-			moveTile(moveDirection.dx * MOVE_SPEED * dt, moveDirection.dy * MOVE_SPEED * dt);
+			var toPosX:Float = fx + moveDirection.dx * 6 * MOVE_SPEED * dt;
+			var toPosY:Float = fy + moveDirection.dy * 6 * MOVE_SPEED * dt;
+
+			var unpassibleTiles:Array<GameTile> = [];
+
+			for (sh in [[-1, 0], [0, -1], [1, 0], [0, 1]]) {
+				var tile = map.getTile(Math.floor(fx / 6) + sh[0], Math.floor(fy / 6) + sh[1]);
+
+				if (tile != null && !tile.passable)
+					unpassibleTiles.push(tile);
+			}
+
+			for (ut in unpassibleTiles) {
+				var px = ut.pos.tileX * 6 + 3;
+				var py = ut.pos.tileY * 6 + 3;
+
+				var cx:Float = Math.abs(px - toPosX);
+				var cy:Float = Math.abs(py - toPosY);
+
+				var dx:Int = px < toPosX ? -1 : 1;
+				var dy:Int = py < toPosY ? -1 : 1;
+
+				if (cx <= 5 && cy <= 5) {
+					if (cx < cy)
+						toPosY = py - 5 * dy;
+					else
+						toPosX = px - 5 * dx;
+				}
+			}
+
+			fx = toPosX;
+			fy = toPosY;
 
 			frameTime += dt;
 
@@ -121,11 +157,15 @@ class Player extends Mob {
 		}
 
 		if (carryingDisplaySnap != null) {
-			carryingDisplay.x = carryingDisplaySnap.tileX * 6;
-			carryingDisplay.y = carryingDisplaySnap.tileY * 6;
+			carryingDisplayWrap.x = carryingDisplaySnap.tileX * 6 + 3;
+			carryingDisplayWrap.y = carryingDisplaySnap.tileY * 6;
+			carryingDisplayWrap.scaleX = 1;
 		} else {
-			carryingDisplay.x = Math.floor(fx + actionDirection.dx * 5 - 3);
-			carryingDisplay.y = Math.floor(fy + actionDirection.dy * 5 - 3);
+			carryingDisplayWrap.x = Math.floor(fx + actionDirection.dx * 5);
+			carryingDisplayWrap.y = Math.floor(fy + actionDirection.dy * 5 - 3);
+
+			if (actionDirection.dx != 0)
+				carryingDisplayWrap.scaleX = actionDirection.dx;
 		}
 
 		if (Std.is(carrying, Tool)) {

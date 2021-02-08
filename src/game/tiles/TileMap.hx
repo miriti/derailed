@@ -76,6 +76,18 @@ class TileMap extends Object {
 			next.next = new RailTile(next);
 			next = next.next;
 			setTile(tx + 4, ty + 2, next);
+
+			next.next = new RailTile(next);
+			next = next.next;
+			setTile(tx + 5, ty + 2, next);
+
+			next.next = new RailTile(next);
+			next = next.next;
+			setTile(tx + 6, ty + 2, next);
+
+			next.next = new RailTile(next);
+			next = next.next;
+			setTile(tx + 7, ty + 2, next);
 		}
 	}
 

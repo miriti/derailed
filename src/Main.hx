@@ -1,4 +1,3 @@
-import game.Game;
 import hxd.App;
 import hxd.Event;
 import hxd.Res;
@@ -12,7 +11,7 @@ class Main extends App {
 	override function init() {
 		engine.backgroundColor = Palette.LIGHT;
 		Window.getInstance().addEventTarget(windowEventTarget);
-		setState(new Game());
+		setState(new TitleScreen());
 	}
 
 	public function setState(newState:State) {
@@ -43,7 +42,6 @@ class Main extends App {
 
 	static function main() {
 		Res.initEmbed();
-		// Res.initLocal();
 		new Main();
 	}
 }

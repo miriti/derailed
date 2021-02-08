@@ -23,13 +23,13 @@ class Train extends Object {
 	public function new(?parent) {
 		super(parent);
 
-		for (_ in 0...2) {
+		for (_ in 0...3) {
 			cars.push(new Car(this));
 		}
 	}
 
 	public function start() {
-		speed = 0.1;
+		speed = 0.05;
 	}
 
 	public function setTrack(track:Array<RailTile>, ?start:Int = 0) {
@@ -59,8 +59,8 @@ class Train extends Object {
 
 			speedIncreaseDistance += d;
 
-			if (speedIncreaseDistance >= 30) {
-				speed += 0.1;
+			if (speedIncreaseDistance >= 35) {
+				speed += 0.05;
 				speedIncreaseDistance = 0;
 			}
 
